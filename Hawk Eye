@@ -1,0 +1,380 @@
+#!/bin/bash 
+
+
+
+#checking if the user is root
+ROOT=$(whoami)
+location=$(pwd)
+if [[ "$ROOT" == root ]];then
+figlet "you may enter"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+echo "||=====||=====||=====|              |=====||=====||=====||"
+sleep 3
+clear 
+echo
+echo "hello please insert your file "
+read -e FILE
+# checks if the file exists 
+if [[ -f $FILE ]]; then 
+echo 
+
+# check if the file has content inside
+        if [[ -s $FILE ]] ; then 
+
+# tools installation 
+        echo "do you want to install the tools?"
+        read -e TOOLS
+                if [[ $TOOLS == yes ]] ; then 
+                echo " [!] installing please wait [!] "
+                sudo apt install binwalk -y  >/dev/null 2>&1
+                sudo apt install foremost -y >/dev/null 2>&1
+                wget https://cyberiumarena.com/lab/nx212/memdump.zip  >/dev/null 2>&1
+                unzip -o memdump.zip  >/dev/null 2>&1
+                unzip -o Volatililty_for_Linux.zip >/dev/null 2>&1
+                unzip -o Volatility_for_Linux.zip >/dev/null 2>&1
+                sudo apt install bulk-extractor -y >/dev/null 2>&1
+                sudo apt install binutils -y >/dev/null 2>&1l 
+                else 
+                echo
+                echo "mmm hope you know what you are doing"
+                fi
+                echo
+                echo "creating a directory named forensics_pro"
+                echo "[!] all the files will be saved to forensics_pro [!]  "
+
+                # give the user the option to choose what tool they would like to use 
+                mkdir forensics_pro >/dev/null 2>&1 
+                echo " what tool would you like to use "
+                echo -e " 
+                [1] bulk_extractor 
+                [2] strings
+                [3] binwalk
+                [4] foremost
+                [5] volatility
+                "
+
+                read -r tools 
+
+                case $tools in 
+                1)
+                mv ./$FILE ./forensics_pro
+
+                 cd forensics_pro
+
+                 rm -r bulk_output  >/dev/null 2>&1
+
+                 # extracting the files from bulk 
+                 echo "extracting the content of the mem file..."
+                 bulk_extractor $FILE -o bulk_output >/dev/null 2>&1
+
+                 cd bulk_output 
+                 # here I’m looping through all the files and deleting the empty ones
+                 for i in $(ls -l  | grep -w 0 | awk '{print $(NF-0)}') ;do rm $i ;done
+                 #here I’m checking if the pcap file exists 
+                 if [[ ! -z  $(ls | grep packets.pcap ) ]] ; then
+                 echo "pcap file has been found, would you like to open it"
+                 #present the location, user, and file size
+                 echo -e "
+                ---------------------------------------------------------------
+                |user : $ROOT                                                  |
+                |file location : $(pwd)                                        |
+                |file size $( ls -lh | grep packets.pcap | awk '{print $5}')   |
+                ---------------------------------------------------------------
+                "
+                #give the user the option to open the pcap
+                echo "so would you like to open the pcap file?"
+                read WIRE
+                if [[ $WIRE == yes ]] ; then
+                echo "opening the pcap ..."
+                sleep 2
+                wireshark packets.pcap
+                else
+                echo " have a nice day "
+                sleep 2
+                exit
+                fi
+                fi
+                ;;
+                2)
+                # extracting all the strings from the file 
+                mv ./$FILE ./forensics_pro
+                cd forensics_pro
+                mkdir strings_dump  >/dev/null 2>&1
+                mv ./$FILE ./strings_dump >/dev/null 2>&1
+                cd strings_dump
+                echo "working on the files.."
+                strings $FILE | grep exe > strings_exe
+                strings $FILE | grep url > strings_url
+                strings $FILE | grep password > strings_password
+                strings $FILE | grep username > strings_username
+                strings $FILE | grep cmd > strings_cmd
+                strings $FILE | grep dll > strings_dll
+                echo "by default the tool is looking for (exe,url,passwords,username,cmd,dll "
+                echo
+                STRINGS_R () 
+{
+        # giving the user the option to look for whatever they want 
+                echo "would you like to search for something else? "
+                read ELSE
+                if [[ $ELSE == yes ]] ; then
+                echo " this is a free search section; you can write the string command that you want"
+                echo " example strings $FILE | grep txt > strings_exe "
+                read -r FREE
+                eval "$FREE"
+
+                echo "would you like to search for another keyword?"
+                read KEY
+                        if [[ $KEY == yes ]] ; then 
+                        echo "restart.."
+                        sleep 2
+                        STRINGS_R 
+                        else
+                        echo " goodbye :) "
+                        fi
+                else
+                echo " goodbye :) "
+                fi
+}
+STRINGS_R 
+                ;;
+                # extracting files and putting them in a directory
+        3)
+        mv ./$FILE ./forensics_pro
+        cd forensics_pro
+       sudo binwalk --run-as=root -e cy_poll.exe 
+                ;;
+        4)
+       FOREMOST()
+       {           
+                # extracting with foremost and giving list of what you would like to do
+        mv ./$FILE ./forensics_pro
+                cd forensics_pro
+                rm -r foremost_dump  >/dev/null 2>&1
+        echo -e " what would you like to do "
+        echo -e "
+        [1] extract everything 
+        [2] free_style
+                "
+        read -r FOR
+        case $FOR in
+        1)
+        # lets you restart 
+       sudo foremost -i $FILE -o foremost_dump
+        chmod -R 777 foremost_dump
+        echo "would you like to extract something else?"
+        read MEM
+        if [[ $MEM == yes ]] ; then
+        FOREMOST
+        else
+        echo "goodbye"
+        fi
+        ;;
+        2)
+        echo " example foremost $FILE -o foremost_dump "
+        echo -e "
+        -t  - specify file type.  (-t jpeg,pdf ...) 
+        -o  - set output directory (defaults to output)
+        -i  - specify input file (default is stdin)
+         "
+        read -r FREE
+        eval "$FREE"
+         chmod -R 777 foremost*
+         # lets you restart 
+        sleep 2
+        echo "would you like to extract something else?"
+        read MEM
+        if [[ $MEM == yes ]] ; then
+        FOREMOST
+        else
+        echo "goodbye"
+        fi
+        ;;
+        esac
+}
+FOREMOST
+                ;;
+        5) 
+        # moving all the directories and files to their places 
+                mv ./volatility_2.5.linux.standalone ./forensics_pro >/dev/null 2>&1
+                mv ./$FILE ./forensics_pro >/dev/null 2>&1
+                cd forensics_pro
+                mv ./$FILE ./volatility_2.5.linux.standalone >/dev/null 2>&1
+                cd volatility_2.5.linux.standalone
+                rm txt  2>/dev/null 
+                if [[ -z $(./volatility_2.5_linux_x64 -f $FILE imageinfo | grep -w "No suggestion" | awk '{print $4,$5}') ]] ; then  >/dev/null 2>&1 
+                echo " starting analysis .."
+                MEM_FILE=$(./volatility_2.5_linux_x64 -f $FILE imageinfo | awk 'NR==1'  | awk -F ',' '{print $1}' | awk '{print $(NF-0)}') >/dev/null 2>&1
+                VOL.PY()
+           # lets the user pick what they want to use 
+           {
+                echo " what would you like to do"
+                echo -e "
+                [1] process listing
+                [2] network connections 
+                [3] hash dumping 
+                [4] username extract
+                [5] registry dump 
+                [6] filescan
+                "
+                read VOL
+                case "$VOL" in
+                1)
+                ./volatility_2.5_linux_x64 -f $FILE --profile="$MEM_FILE" pslist
+                echo "would you like to analyze the mem file more?"
+                 # lets you restart 
+                read MEM
+                if [[ $MEM == yes ]] ; then
+                VOL.PY
+                else
+                echo "goodbye"
+                fi
+                ;;
+                2)
+                ./volatility_2.5_linux_x64 -f $FILE --profile="$MEM_FILE" connscan
+                echo "would you like to analyze the mem file more?"
+                read MEM
+                 # lets you restart 
+                if [[ $MEM == yes ]] ; then
+                VOL.PY
+                else
+                echo "goodbye"
+                fi
+                ;;
+                3)
+                ./volatility_2.5_linux_x64 -f $FILE --profile="$MEM_FILE" hashdump
+                echo "would you like to analyze the mem file more?"
+                read MEM
+                 # lets you restart 
+                if [[ $MEM == yes ]] ; then
+                VOL.PY
+                else
+                echo "goodbye"
+                fi
+                ;;
+                4)
+                sleep 1
+        ./volatility_2.5_linux_x64 -f "$FILE" --profile="$MEM_FILE" printkey -K "SAM\\Domains\\Account\\Users\\Names" 
+
+                echo "would you like to analyze the mem file more?"
+                read MEM
+                if [[ $MEM == yes ]] ; then
+                VOL.PY
+                 # lets you restart 
+                else
+                echo "goodbye"
+                fi
+                ;;
+                5)
+                mkdir reg_dump 
+                ./volatility_2.5_linux_x64 -f $FILE --profile="$MEM_FILE" dumpregistry  --dump-dir=reg_dump
+                echo "would you like to analyze the mem file more?"
+                read MEM
+                 # lets you restart 
+                if [[ $MEM == yes ]] ; then
+                VOL.PY
+                else
+                echo "goodbye"
+                fi
+                ;;
+                6)
+                ./volatility_2.5_linux_x64 -f $FILE --profile="$MEM_FILE" filescan 
+                echo "would you like to analyze the mem file more?"
+                read MEM
+                 # lets you restart 
+                if [[ $MEM == yes ]] ; then 2>/dev/null
+                VOL.PY
+                else
+                echo "goodbye"
+                fi
+                esac 
+        }
+VOL.PY
+                else
+                echo "please select a compatible memory file"
+                fi
+
+
+
+                esac
+
+
+        else
+        echo " your file is empty.. "
+        echo " please check the file .. Adiós "
+
+        fi
+
+else
+echo " file does not exist "
+echo " please insert an existing file Adiós "
+sleep 3
+exit
+fi
+else
+figlet "you shall not pass!"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+echo "||=====||=====||=====||=====||=====||=====||=====||=====||"
+
+
+fi
+# moves the file to the user Desktop 
+mv ./$FILE $location >/dev/null 2>&1
+# results file 
+RESULTS ()
+{
+cd $location 2>/dev/null
+cd forensics_pro 2>/dev/null
+touch results 2>/dev/null
+chmod 777 results 2>/dev/null
+echo "time of analysis" >>results 
+date  |  awk '{print $2,$3,$4,$6}'  >> results
+if [[ -d volatility_2.standalone5.linux. ]] ; then 
+echo "number of files in volatility_2.standalone5.linux." >> results | ls volatility_2.5.linux.standalone | wc -l >> results 2>/dev/null
+else 
+true 
+fi
+
+if [[ -d foremost_dump ]] ; then 
+echo "number of files in  foremost_dump " >> results | ls  foremost_dump | wc -l >>  results  2>/dev/null
+
+else
+true
+fi
+
+if [[ -d  bulk_output ]] ; then 
+echo "number of files in  bulk_output "  >> results | ls  bulk_output | wc -l >>  results  2>/dev/null
+else
+true
+fi
+
+if [[ -d  strings_dump ]] ; then 
+echo "number of files in  strings_dump "  >> results | ls  strings_dump | wc -l >>  results  2>/dev/null
+else
+true
+fi
+
+if [[ -d  binwalk ]] ; then 
+echo "number of files in   binwalk "  >> results | ls  _* | wc -l >>  results  2>/dev/null
+else
+true
+fi
+}
+RESULTS
+echo " results file will be saved in forensics_pro directory "
